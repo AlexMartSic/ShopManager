@@ -16,7 +16,7 @@ namespace ShopManager.Application.Services
                 throw new ArgumentNullException(nameof(repository));
         }
 
-        public async Task<ErrorOr<string>> AddStockAsync(string productCode, int quantity)
+        public async Task<ErrorOr<Updated>> AddStockAsync(string productCode, int quantity)
         {
             if (quantity < 0)
             {
@@ -32,7 +32,7 @@ namespace ShopManager.Application.Services
             product.Stock += quantity;
             var result = await _repository.UpdateProductAsync(product);
 
-            return $"Remaining stock: {result.Stock}";
+            return Result.Updated;
         }
 
         public async Task<ErrorOr<ProductResponseDto>> CreateProductAsync(ProductRequestCreateDto requestDto)
@@ -139,7 +139,7 @@ namespace ShopManager.Application.Services
             };
         }
 
-        public async Task<ErrorOr<string>> RemoveStockAsync(string productCode, int quantity)
+        public async Task<ErrorOr<Updated>> RemoveStockAsync(string productCode, int quantity)
         {
             if (quantity < 0)
             {
@@ -160,7 +160,7 @@ namespace ShopManager.Application.Services
             product.Stock -= quantity;
             var result = await _repository.UpdateProductAsync(product);
 
-            return $"Remaining stock: {result.Stock}";
+            return Result.Updated;
         }
 
         public async Task<ErrorOr<ProductResponseDto>> UpdateProductAsync(ProductRequestUpdateDto requestDto, string code)
