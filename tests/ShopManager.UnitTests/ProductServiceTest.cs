@@ -6,7 +6,7 @@ using ShopManager.Application.Services;
 using ShopManager.Domain.Common.Interfaces.Repositories;
 using ShopManager.Domain.Entities;
 
-namespace OrderManagementApi.UnitTests
+namespace ShopManager.UnitTests
 {
     public class ProductServiceTest
     {
@@ -19,11 +19,79 @@ namespace OrderManagementApi.UnitTests
             _productService = new ProductService(_productRepositoryMock.Object);
         }
 
-        #region Stock
+        #region Remove stock
         [Fact]
-        public async Task AddStock_WhenAllDataIsCorrect_ShoulReturnString()
+        public async Task RemoveStock_WhenAllDataIsCorrect_ShouldReturnUpdated()
         {
+            _productRepositoryMock.Setup(r => r.GetProductByCodeAsync("P001"))
+                                  .ReturnsAsync(new Product { Code = "P001", Name = "Product01", Price = 5, Stock = 10 });
 
+            _productRepositoryMock.Setup(r => r.UpdateProductAsync(It.IsAny<Product>()))
+                                  .ReturnsAsync(new Product { Code = "P001", Name = "Product01", Price = 5, Stock = 5 });
+
+            var result = await _productService.RemoveStockAsync("P001", 5);
+
+            result.IsError.Should().BeFalse();
+            result.Value.Should().Be(Result.Updated);
+        }
+
+        [Fact]
+        public async Task RemoveStock_WhenQuantityIsLessThan0_ShouldReturnValidationError()
+        {
+            var result = await _productService.RemoveStockAsync("P001", -5);
+
+            result.IsError.Should().BeTrue();
+            result.FirstError.Type.Should().Be(ErrorType.Validation);
+        }
+
+        [Fact]
+        public async Task RemoveStock_WhenProductDoesntExist_ShouldReturnNotFound()
+        {
+            _productRepositoryMock.Setup(r => r.GetProductByCodeAsync("DOESNTEXIST"))
+                                  .ReturnsAsync((Product?)null);
+
+            var result = await _productService.RemoveStockAsync("DOESNTEXIST", 5);
+
+            result.IsError.Should().BeTrue();
+            result.FirstError.Type.Should().Be(ErrorType.NotFound);
+        }
+        #endregion
+
+        #region Add Stock
+        [Fact]
+        public async Task AddStock_WhenAllDataIsCorrect_ShouldReturnUpdated()
+        {
+            _productRepositoryMock.Setup(r => r.GetProductByCodeAsync("P001"))
+                                  .ReturnsAsync(new Product { Code = "P001", Name = "Product01", Price = 5, Stock = 10 });
+
+            _productRepositoryMock.Setup(r => r.UpdateProductAsync(It.IsAny<Product>()))
+                                  .ReturnsAsync(new Product { Code = "P001", Name = "Product01", Price = 5, Stock = 20 });
+
+            var result = await _productService.AddStockAsync("P001", 10);
+
+            result.IsError.Should().BeFalse();
+            result.Value.Should().Be(Result.Updated);
+        }
+
+        [Fact]
+        public async Task AddStock_WhenQuantityIsLessThan0_ShouldReturnValidationError()
+        {
+            var result = await _productService.AddStockAsync("P001", -10);
+
+            result.IsError.Should().BeTrue();
+            result.FirstError.Type.Should().Be(ErrorType.Validation);
+        }
+
+        [Fact]
+        public async Task AddStock_WhenProductDoesntExist_ShouldReturnNotFound()
+        {
+            _productRepositoryMock.Setup(r => r.GetProductByCodeAsync("DOESNTEXIST"))
+                                  .ReturnsAsync((Product?)null);
+
+            var result = await _productService.AddStockAsync("DOESNTEXIST", 10);
+
+            result.IsError.Should().BeTrue();
+            result.FirstError.Type.Should().Be(ErrorType.NotFound);
         }
         #endregion
 
@@ -62,7 +130,8 @@ namespace OrderManagementApi.UnitTests
             _productRepositoryMock.Setup(r => r.GetProductByCodeAsync("DOESNTEXIST"))
                                   .ReturnsAsync((Product?)null);
 
-            var result = await _productService.UpdateProductAsync(It.IsAny<ProductRequestUpdateDto>(), "DOESNTEXIST");
+            var result = await _productService.UpdateProductAsync(new ProductRequestUpdateDto { Name = "Product01", Price = 5 },
+                                                                  "DOESNTEXIST");
 
             result.IsError.Should().BeTrue();
             result.FirstError.Type.Should().Be(ErrorType.NotFound);
@@ -86,6 +155,18 @@ namespace OrderManagementApi.UnitTests
             result.Value.Name.Should().Be("Product01");
             result.Value.Price.Should().Be(5);
             result.Value.Stock.Should().Be(10);
+        }
+
+        [Fact]
+        public async Task CreateProduct_WhenProductExsit_ShouldReturnConflictError()
+        {
+            _productRepositoryMock.Setup(r => r.GetProductByCodeAsync("P001"))
+                                  .ReturnsAsync(new Product { Code = "P001", Name = "Product01", Price = 5, Stock = 10 });
+
+            var result = await _productService.CreateProductAsync(new ProductRequestCreateDto { Code = "P001", Name = "Product01", Price = 5, Stock = 10 });
+
+            result.IsError.Should().BeTrue();
+            result.FirstError.Type.Should().Be(ErrorType.Conflict);
         }
 
         [Theory]
