@@ -45,10 +45,7 @@ namespace ShopManager.API.Controllers
         {
             var result = await _customerService.GetAllCustomersAsync();
 
-            return result.Match<IActionResult>(
-                customers => Ok(customers),
-                errors => HandleErrors(errors)
-            );
+            return Ok(result);
         }
 
         [HttpGet("GetCustomerByCode")]
