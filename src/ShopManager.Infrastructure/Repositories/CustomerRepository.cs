@@ -23,13 +23,9 @@ namespace ShopManager.Infrastructure.Repositories
             return customer;
         }
 
-        public async Task DeleteCustomerAsync(string code)
+        public async Task DeleteCustomerAsync(Customer customer)
         {
-            Customer? customer = await _dbContext.Customers.Where(c => c.Code.ToUpper().Trim() == code.ToUpper().Trim())
-                                                           .FirstOrDefaultAsync();
-
-            if (customer != null)
-                _dbContext.Customers.Remove(customer);
+            _dbContext.Customers.Remove(customer);
 
             await _dbContext.SaveChangesAsync();
         }

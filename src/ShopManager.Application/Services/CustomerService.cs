@@ -58,18 +58,18 @@ namespace ShopManager.Application.Services
                 return Error.NotFound("Customer.Code", "A customer with this code doesn't exist.");
             }
 
-            await _customerRepository.DeleteCustomerAsync(code);
+            await _customerRepository.DeleteCustomerAsync(customer);
 
             return Result.Deleted;
         }
 
-        public async Task<ErrorOr<List<CustomerResponseDto>>> GetAllCustomersAsync()
+        public async Task<List<CustomerResponseDto>> GetAllCustomersAsync()
         {
             List<Customer> lstCustomers = await _customerRepository.GetAllCustomersAsync();
 
             if (lstCustomers == null || !lstCustomers.Any())
             {
-                return Error.NotFound("Customer", "There are no customers created.");
+                return new List<CustomerResponseDto>();
             }
 
             List<CustomerResponseDto> lstResponse = lstCustomers
