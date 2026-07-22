@@ -100,6 +100,17 @@ namespace ShopManager.Application.Services
             };
         }
 
+        public async Task<ErrorOr<Customer>> GetCustomerEntityByCodeAsync(string code)
+        {
+            var customer = await _customerRepository.GetCustomerByCodeAsync(code);
+            if (customer == null)
+            {
+                return Error.NotFound("Customer.Code", "A customer with this code doesn't exist.");
+            }
+
+            return customer;
+        }
+
         public async Task<ErrorOr<CustomerResponseDto>> UpdateCustomerAsync(CustomerRequestUpdateDto requestDto, string code)
         {
             Customer? customer = null;

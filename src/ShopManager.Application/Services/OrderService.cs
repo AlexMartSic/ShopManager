@@ -9,24 +9,26 @@ namespace ShopManager.Application.Services
 {
     public class OrderService : IOrderService
     {
-        private readonly ICustomerRepository _customerRepository;
+        //private readonly ICustomerRepository _customerRepository;
+        private readonly ICustomerService _customerService;
         private readonly IOrderRepository _orderRepository;
-        private readonly IProductRepository _productRepository;
+        //private readonly IProductRepository _productRepository;
         private readonly IProductService _productService;
 
         public OrderService(IOrderRepository orderRepository,
-                            ICustomerRepository customerRepository,
-                            IProductRepository productRepository,
+                            ICustomerService customerService,
                             IProductService productService)
         {
             _orderRepository = orderRepository ??
                 throw new ArgumentNullException(nameof(orderRepository));
 
-            _customerRepository = customerRepository ??
-                throw new ArgumentNullException(nameof(customerRepository));
+            //_customerRepository = customerRepository ??
+            //    throw new ArgumentNullException(nameof(customerRepository));
+            _customerService = customerService ??
+                throw new ArgumentNullException(nameof(customerService));
 
-            _productRepository = productRepository ??
-                throw new ArgumentNullException(nameof(productRepository));
+            //_productRepository = productRepository ??
+            //    throw new ArgumentNullException(nameof(productRepository));
 
             _productService = productService ??
                 throw new ArgumentNullException(nameof(productService));
@@ -34,17 +36,19 @@ namespace ShopManager.Application.Services
 
         public async Task<ErrorOr<OrderResponseDetailsDto>> CreateOrderAsync(OrderLineRequestCreateDto requestDto, string customerCode)
         {
-            var customer = await _customerRepository.GetCustomerByCodeAsync(customerCode);
-            if (customer == null)
+            var customerError = await _customerService.GetCustomerEntityByCodeAsync(customerCode);
+            if (customerError.IsError)
             {
-                return Error.NotFound("Customer.Code", "A customer with this code doesn't exist.");
+                return customerError.Errors;
             }
+            var customer = customerError.Value;
 
-            var product = await _productRepository.GetProductByCodeAsync(requestDto.ProductCode);
-            if (product == null)
+            var productError = await _productService.GetProductEntityByCodeAsync(requestDto.ProductCode);
+            if (productError.IsError)
             {
-                return Error.NotFound("Product.Code", "A product with this code doesn't exist.");
+                return productError.Errors;
             }
+            var product = productError.Value;
 
             var order = await _orderRepository.GetOrderByCodeAsync(requestDto.OrderCode);
             if (order != null && !string.Equals(order?.Customer?.Code, customerCode, StringComparison.CurrentCultureIgnoreCase))
@@ -52,9 +56,12 @@ namespace ShopManager.Application.Services
                 return Error.Validation("Order.Customer.Code", "The order's customer code is different to the requested customer code");
             }
 
-            if (product.Stock < requestDto.Quantity)
+
+            //Remove stock from product before creating the order to avoid race conditions
+            var newStock = await _productService.RemoveStockAsync(requestDto.ProductCode, requestDto.Quantity);
+            if (newStock.IsError)
             {
-                return Error.Validation("Product.Stock", "Insufficient stock of this product.");
+                return newStock.Errors;
             }
 
             if (order == null)
@@ -84,11 +91,9 @@ namespace ShopManager.Application.Services
 
             order.Lines.Add(line);
 
-            //order.TotalPrice = order.Lines.Sum(s => s.Price);
             order.TotalPrice += product.Price * line.Quantity;
 
             var result = await _orderRepository.CreateOrderAsync(order);
-            var newStock = await _productService.RemoveStockAsync(requestDto.ProductCode, line.Quantity);
 
             OrderResponseDetailsDto response = new OrderResponseDetailsDto()
             {
@@ -208,7 +213,7 @@ namespace ShopManager.Application.Services
             var product = orderLine.Product;
             if (product == null)
             {
-                return Error.NotFound("Product", "This line doesn't have a product.");
+                return Error.Validation("Product", "This line doesn't have a product.");
             }
             if (product.Stock < quantity)
             {
@@ -217,18 +222,18 @@ namespace ShopManager.Application.Services
 
             Order result;
 
-            if (orderLine.Quantity < quantity)
+            if (orderLine.Quantity > quantity)
             {
-                order.TotalPrice -= (quantity - orderLine.Quantity) * product.Price;
-                orderLine.Quantity = quantity;
-                result = await _orderRepository.UpdateOrderAsync(order, orderLine);
+                order.TotalPrice -= (orderLine.Quantity - quantity) * product.Price;
             }
             else
             {
-                order.TotalPrice += (orderLine.Quantity - quantity) * product.Price;
-                orderLine.Quantity = quantity;
-                result = await _orderRepository.UpdateOrderAsync(order, orderLine);
+                order.TotalPrice += (quantity - orderLine.Quantity) * product.Price;
             }
+
+            orderLine.Quantity = quantity;
+            orderLine.Price = product.Price * quantity;
+            result = await _orderRepository.UpdateOrderAsync(order, orderLine);
 
             OrderResponseDetailsDto response = new OrderResponseDetailsDto()
             {
