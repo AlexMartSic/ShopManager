@@ -139,6 +139,17 @@ namespace ShopManager.Application.Services
             };
         }
 
+        public async Task<ErrorOr<Product>> GetProductEntityByCodeAsync(string code)
+        {
+            var productResponse = await _repository.GetProductByCodeAsync(code);
+            if (productResponse == null)
+            {
+                return Error.NotFound("Product.Code", "A product with this code doesn't exist");
+            }
+
+            return productResponse;
+        }
+
         public async Task<ErrorOr<Updated>> RemoveStockAsync(string productCode, int quantity)
         {
             if (quantity < 0)
