@@ -9,7 +9,7 @@ REST API for managing products, customers and orders, built with ASP.NET Core.
 - Global exception handling middleware
 - Result pattern using ErrorOr
 - Dependency Injection
-- Starting with unit tests
+- Unit tests for service classes
 
 ## Architecture
 
@@ -48,7 +48,7 @@ https://localhost:7207/swagger
 
 - Add JWT authentication
 - Add role-based authorization
-- Add unit and integration test
+- Add Integration test
 - Add logs
 
 ## Notes
